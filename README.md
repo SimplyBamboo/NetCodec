@@ -9,13 +9,11 @@ Created by [SimplyBamboo](https://www.youtube.com/@Simply.Bamboo) ([Roblox Profi
 - **Performance:** Leverages Luau's `buffer` library for efficient data transmission
 - **Type Safety:** Built-in validation for common Roblox data types
 - **Simple API:** Minimalistic API for remote events and functions
-- **Strictly Typed:** Developed with Luau's strict type checking (`--!strict`)
 
 ## Installation
 
-1. Install via [Rojo](https://rojo.space/):
-```bash
-rojo build -o NetCodec.rbxmx
+1. Put things in the right places
+
 ```
 2. Place the built model in ReplicatedStorage
 
