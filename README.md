@@ -1,5 +1,8 @@
 # NetCodec
 
+**⚠️ WARNING: This is a WORK IN PROGRESS and not stable for production use yet! ⚠️**  
+*(Only use if you're willing to deal with potential breaking changes and bugs)*
+
 NetCodec is a high-performance, buffer-based networking library for Roblox Luau. It simplifies client-server communication by automatically handling data serialization into efficient buffer formats, deserialization, and type validation.
 
 Created by [SimplyBamboo](https://www.youtube.com/@Simply.Bamboo) ([Roblox Profile](https://www.roblox.com/users/1466889132/profile), Discord: simply.bamboo)
@@ -12,10 +15,9 @@ Created by [SimplyBamboo](https://www.youtube.com/@Simply.Bamboo) ([Roblox Profi
 
 ## Installation
 
-1. Put things in the right places
+1. Download this repository
+2. Drag the `src/shared` and its contents into Roblox Studio's ReplicatedStorage
 
-
-2. Place the built model in ReplicatedStorage
 
 ## Quick Start
 

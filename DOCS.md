@@ -1,59 +1,92 @@
 # NetCodec API Documentation
 
+## Overview
+
+NetCodec provides a safer, more efficient way to handle Roblox networking by:
+- Serializing data to binary buffers for smaller payloads
+- Validating data types automatically before transmission
+- Managing RemoteEvent/RemoteFunction instances
+
 ## Core Functions
 
 ### `NetCodec.Start()`
-Initializes the networking system. Must be called on both client and server.
+Initializes the networking system. Must be called once on both client and server before any other NetCodec functions.
 
-### `NetCodec.DefineRemoteEvent(eventName: string): RemoteEvent`
-Creates a new remote event that can be fired between client and server.
+**Usage:**
+```lua
+-- Server:
+NetCodec.Start() -- Creates containers in ReplicatedStorage
 
-### `NetCodec.DefineRemoteFunction(funcName: string): RemoteFunction`  
-Creates a new remote function for request/response communication.
+-- Client:
+NetCodec.Start() -- Finds server-created containers
+```
+
+### `NetCodec.DefineRemoteEvent(eventName: string)`
+Creates a managed RemoteEvent wrapper.
+
+**Parameters:**
+- `eventName` (string): Unique identifier shared between server/client scripts
+
+**Returns:** RemoteEvent wrapper with methods below.
+
+**Example:**
+```lua
+local myEvent = NetCodec.DefineRemoteEvent("PlayerJoined")
+```
+
+### `NetCodec.DefineRemoteFunction(funcName: string)`  
+Creates a managed RemoteFunction wrapper.
+
+**Parameters & Returns:** Same as DefineRemoteEvent but for functions.
 
 ## RemoteEvent Methods
 
-### `RemoteEvent:FireServer(...)`
-Client-to-server event firing. Arguments are automatically serialized.
+### Event Firing
+| Method | Description | Example |
+|--------|-------------|---------|
+| `:FireServer(...)` | Client → Server | `myEvent:FireServer(playerData)` |
+| `:FireClient(player, ...)` | Server → Specific client | `myEvent:FireClient(player, message)` |
+| `:FireAllClients(...)` | Server → All clients | `myEvent:FireAllClients(gameUpdate)` |
+| `:FireAllClientsExcept(excludedPlayers, ...)` | Server → Filtered clients | `myEvent:FireAllClientsExcept({cheater}, antiCheatUpdate)` |
 
-### `RemoteEvent:FireClient(player: Player, ...)`  
-Server-to-client event firing for a specific player.
-
-### `RemoteEvent:FireAllClients(...)`  
-Server-to-all-clients event firing.
-
-### `RemoteEvent:ConnectServer(callback: (player: Player, ...) -> ())`  
-Server-side event listener.
-
-### `RemoteEvent:ConnectClient(callback: (...)->())`  
-Client-side event listener.
+### Event Listening
+| Method | Parameters | Example |
+|--------|------------|---------|
+| `:ConnectServer(callback)` | `function(player, ...)` | `myEvent:ConnectServer(onPlayerEvent)` |
+| `:ConnectClient(callback)` | `function(...)` | `myEvent:ConnectClient(onServerMessage)` |
 
 ## RemoteFunction Methods
 
-### `RemoteFunction:InvokeServer(...): ...`  
-Client-to-server function invocation.
+| Method | Description | Example |
+|--------|-------------|---------|
+| `:InvokeServer(...)` | Client → Server request | `local response = myFunc:InvokeServer(request)` |
+| `:SetCallback(callback)` | Server handler `function(player, ...)` | `myFunc:SetCallback(handleRequest)` |
 
-### `RemoteFunction:SetCallback(callback: (player: Player, ...)->...)`  
-Server-side function handler.
+## Supported Data Types
 
-## Supported Types
-
-| Type       | Notes                          |
-|------------|--------------------------------|
-| nil        |                                |
-| boolean    |                                |
-| number     | 64-bit float                  |
-| string     | UTF-8 encoded                 |
-| Vector3    |                                |
-| CFrame     |                                |
-| table      | Arrays or string-keyed maps   |
+| Type | Limits | Example |
+|------|--------|---------|
+| Boolean | - | `true` | 
+| Number | Finite, 64-bit | `42`, `3.14` |
+| String | ≤65535 chars UTF-8 | `"Hello"` |
+| Vector3 | - | `Vector3.new(1,2,3)` |
+| CFrame | - | `CFrame.new(pos)` |
+| Table | Arrays or maps | `{1,2,3}` or `{key="value"}` |
 
 ## Validation Rules
 
-Data is automatically validated against these rules:
-- Numbers must be finite (no NaN/infinity)
-- Strings have maximum length of 65535 characters
-- Tables must be either:
-  - Arrays (sequential integer keys starting at 1)
-  - Maps (string keys only)
-- Nested tables up to 32 levels deep
+1. **Numbers**: Must be finite (no NaN/infinity)
+2. **Strings**: Max 65535 UTF-8 encoded chars
+3. **Tables**:
+   - Arrays: Sequential integer keys from 1
+   - Maps: String keys only
+   - Max 32 nesting levels
+4. **Custom Types**: Use validator modules
+
+## Error Handling
+
+NetCodec will:
+- Validate data before sending
+- Validate received data
+- Log warnings for invalid data
+- Use `task.spawn` to isolate callbacks
