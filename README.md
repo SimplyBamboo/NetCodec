@@ -14,7 +14,7 @@ Created by [SimplyBamboo](https://www.youtube.com/@Simply.Bamboo) ([Roblox Profi
 
 1. Put things in the right places
 
-```
+
 2. Place the built model in ReplicatedStorage
 
 ## Quick Start
