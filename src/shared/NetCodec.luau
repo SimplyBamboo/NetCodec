@@ -5,12 +5,11 @@
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Serializer = require(script.Serializer)
-local Deserializer = require(script.Deserializer)
-local Validator = require(script.Validator)
-local Types = require(script.Types) -- Load types if defined later
-local Constants = require(script.Internal.Constants)
-
+local Serializer = require(script.Parent.NetCodec_.Serializer)
+local Deserializer = require(script.Parent.NetCodec_.Deserializer)
+local Validator = require(script.Parent.NetCodec_.Validator)
+local Types = require(script.Parent.NetCodec_.Types)
+local Constants = require(script.Parent.NetCodec_.Internal.Constants)
 --[[
 	TODO: Define shared types in Types.luau
 	type SerializableValue = Types.SerializableValue
@@ -19,7 +18,7 @@ local Constants = require(script.Internal.Constants)
 ]]
 
 local NetCodec = {}
-NetCodec.Remotes = {} -- Store defined remote instances
+NetCodec.Remotes = {} 
 
 local isServer = RunService:IsServer()
 local remoteEventContainer: Folder
@@ -51,7 +50,6 @@ function NetCodec.Start()
 		remoteFunctionContainer.Parent = ReplicatedStorage
 		print("NetCodec Server Started")
 	else
-		-- Wait for folders created by the server
 		remoteEventContainer = ReplicatedStorage:WaitForChild("NetCodecEvents", 60) :: Folder
 		remoteFunctionContainer = ReplicatedStorage:WaitForChild("NetCodecFunctions", 60) :: Folder
 		if not remoteEventContainer or not remoteFunctionContainer then
@@ -59,11 +57,11 @@ function NetCodec.Start()
 	end
 	print("NetCodec Client Started")
 	end
-	NetCodec._started = true -- Mark as started
+	NetCodec._started = true
 end
-NetCodec._started = false -- Internal flag to track initialization
+NetCodec._started = false
 
--- Internal helper to get or create a RemoteEvent
+
 local function getRemoteEvent(name: string): RemoteEvent
 	local existing = remoteEventContainer:FindFirstChild(name)
 	if existing and existing:IsA("RemoteEvent") then
@@ -74,7 +72,6 @@ local function getRemoteEvent(name: string): RemoteEvent
 		newEvent.Parent = remoteEventContainer
 		return newEvent
 	else
-		-- Client should wait for the event created by the server
 		local foundEvent = remoteEventContainer:WaitForChild(name, 10)
 		if foundEvent and foundEvent:IsA("RemoteEvent") then
 			return foundEvent
@@ -84,7 +81,7 @@ local function getRemoteEvent(name: string): RemoteEvent
 	end
 end
 
--- Internal helper to get or create a RemoteFunction
+
 local function getRemoteFunction(name: string): RemoteFunction
 	local existing = remoteFunctionContainer:FindFirstChild(name)
 	if existing and existing:IsA("RemoteFunction") then
@@ -95,7 +92,6 @@ local function getRemoteFunction(name: string): RemoteFunction
 		newFunc.Parent = remoteFunctionContainer
 		return newFunc
 	else
-		-- Client should wait for the function created by the server
 		local foundFunc = remoteFunctionContainer:WaitForChild(name, 10)
 		if foundFunc and foundFunc:IsA("RemoteFunction") then
 			return foundFunc
@@ -130,16 +126,14 @@ function NetCodec.DefineRemoteEvent(name: string)
 	if typeof(name) ~= "string" or string.len(name) == 0 then error("Remote event name must be a non-empty string.", 2) end
 
 	if NetCodec.Remotes[name] then
-		-- Verify it's the correct type if already defined
 		if not NetCodec.Remotes[name]._isEvent then
 			error(("NetCodec: Remote '%s' was previously defined as a RemoteFunction, not a RemoteEvent."):format(name), 2)
 		end
-		-- warn("NetCodec: RemoteEvent with name", name, "already defined.") -- Reduce console spam
-		return NetCodec.Remotes[name] -- Return existing definition
+		return NetCodec.Remotes[name]
 	end
 
 	local remote = getRemoteEvent(name)
-	local definition = { _isEvent = true } -- Internal flag
+	local definition = { _isEvent = true }
 
 	--[[! (Client-only) Fires the event, sending data to the server.
 		@param ...args SerializableValue The data arguments to send. Must be serializable by NetCodec.
@@ -204,16 +198,15 @@ function NetCodec.DefineRemoteEvent(name: string)
 		if not isServer then error("ConnectServer can only be called from the server", 2) end
 		if typeof(callback) ~= "function" then error("ConnectServer requires a function callback.", 2) end
 		remote.OnServerEvent:Connect(function(player, bufferData)
-			-- Added validation ensures bufferData is likely a buffer, but pcall still good
 			local success, args = pcall(Deserializer.Deserialize, bufferData)
 			if success then
 				if Validator.Validate(args) then
-					task.spawn(callback, player, unpack(args)) -- Use task.spawn for safety
+					task.spawn(callback, player, unpack(args))
 				else
 					warn("NetCodec Server: Invalid data received for event '" .. name .. "'. Validation failed.")
 				end
 			else
-				warn("NetCodec Server: Failed to deserialize data for event '" .. name .. "':", args) -- 'args' is error message here
+				warn("NetCodec Server: Failed to deserialize data for event '" .. name .. "':", args) 
 			end
 		end)
 	end
@@ -227,16 +220,15 @@ function NetCodec.DefineRemoteEvent(name: string)
 		if isServer then error("ConnectClient can only be called from the client", 2) end
 		if typeof(callback) ~= "function" then error("ConnectClient requires a function callback.", 2) end
 		remote.OnClientEvent:Connect(function(bufferData)
-			-- Added validation ensures bufferData is likely a buffer, but pcall still good
 			local success, args = pcall(Deserializer.Deserialize, bufferData)
 			if success then
 				if Validator.Validate(args) then
-					task.spawn(callback, unpack(args)) -- Use task.spawn for safety
+					task.spawn(callback, unpack(args))
 				else
 					warn("NetCodec Client: Invalid data received for event '" .. name .. "'. Validation failed.")
 				end
 			else
-				warn("NetCodec Client: Failed to deserialize data for event '" .. name .. "':", args) -- 'args' is error message here
+				warn("NetCodec Client: Failed to deserialize data for event '" .. name .. "':", args) 
 			end
 		end)
 	end
@@ -267,16 +259,14 @@ function NetCodec.DefineRemoteFunction(name: string)
 	if typeof(name) ~= "string" or string.len(name) == 0 then error("Remote function name must be a non-empty string.", 2) end
 
 	if NetCodec.Remotes[name] then
-		-- Verify it's the correct type if already defined
 		if NetCodec.Remotes[name]._isEvent then
 			error(("NetCodec: Remote '%s' was previously defined as a RemoteEvent, not a RemoteFunction."):format(name), 2)
 		end
-		-- warn("NetCodec: RemoteFunction with name", name, "already defined.") -- Reduce console spam
-		return NetCodec.Remotes[name] -- Return existing definition
+		return NetCodec.Remotes[name]
 	end
 
 	local remote = getRemoteFunction(name)
-	local definition = { _isEvent = false } -- Internal flag
+	local definition = { _isEvent = false }
 
 	--[[! (Client-only) Invokes the remote function on the server, sending request data and waiting synchronously for a response.
 		@param ...args SerializableValue The request data arguments to send. Must be serializable by NetCodec.
@@ -296,11 +286,11 @@ function NetCodec.DefineRemoteFunction(name: string)
 				return unpack(responseArgs)
 			else
 				warn("NetCodec Client: Invalid response data received for function '" .. name .. "'. Validation failed.")
-				return nil -- Or handle error appropriately
+				return nil
 			end
 		else
-			warn("NetCodec Client: Failed to deserialize response for function '" .. name .. "':", responseArgs) -- 'responseArgs' is error message
-			return nil -- Or handle error appropriately
+			warn("NetCodec Client: Failed to deserialize response for function '" .. name .. "':", responseArgs)
+			return nil
 		end
 	end
 
@@ -314,7 +304,6 @@ function NetCodec.DefineRemoteFunction(name: string)
 		if not isServer then error("SetCallback can only be called from the server", 2) end
 		if typeof(callback) ~= "function" then error("SetCallback requires a function callback.", 2) end
 		remote.OnServerInvoke = function(player, bufferData)
-			-- Added validation ensures bufferData is likely a buffer, but pcall still good
 			local success, args = pcall(Deserializer.Deserialize, bufferData)
 			if success then
 				if Validator.Validate(args) then
@@ -323,17 +312,15 @@ function NetCodec.DefineRemoteFunction(name: string)
 						return Serializer.Serialize(responseArgs)
 					else
 						warn("NetCodec Server: Invalid response data generated by callback for function '" .. name .. "'. Validation failed.")
-						-- Return serialized empty table or error indicator
-						return Serializer.Serialize({}) -- Indicate error to client? Needs design decision.
+						return Serializer.Serialize({})
 					end
 				else
 					warn("NetCodec Server: Invalid data received for function '" .. name .. "'. Validation failed.")
-					return Serializer.Serialize({}) -- Indicate error to client? Needs design decision.
+					return Serializer.Serialize({})
 				end
 			else
-				warn("NetCodec Server: Failed to deserialize data for function '" .. name .. "':", args) -- 'args' is error message
-				-- Return serialized empty table or error indicator
-				return Serializer.Serialize({}) -- Indicate error to client? Needs design decision.
+				warn("NetCodec Server: Failed to deserialize data for function '" .. name .. "':", args) 
+				return Serializer.Serialize({})
 			end
 		end
 	end
