@@ -74,7 +74,7 @@ Full API documentation is available in [DOCS.md](DOCS.md)
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+no ty, srry
 
 ## License
 
